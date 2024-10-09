@@ -40,7 +40,7 @@ fun match' [] B M = M
       val (_, pPrefs) = get B p 
       val M' = (case (get M p) of
         SOME (k', _) => 
-            if ((search pPrefs k) > (search pPrefs k'))
+            if ((search pPrefs k) < (search pPrefs k'))
             then (update M p (SOME (k, ps)))
             else M
         | NONE => (update M p (SOME (k, ps))))
