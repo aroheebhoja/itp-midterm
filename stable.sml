@@ -33,20 +33,28 @@ fun get (x::xs) 0 = x
            NONE if element i in B is currently unmatched
    *)
 
-fun match' [] B M = M
-  | match' ((k, [])::As) B M = match' As B M
-  | match' ((k, (p::ps))::As) B M = 
+(* we terminate when every member of A has exhausted its preference list -- can probably speed this up
+   by terminating early if every member of A is matched but ehhhhh *)
+
+fun match [] B M = M
+  | match ((k, [])::As) B M = match As B M (* if k has already exhausted its pref list, skip it *)
+  | match ((k, (p::ps))::As) B M = 
     let 
       val (_, pPrefs) = get B p 
       val M' = (case (get M p) of
+        (* p is already matched *)
+
         SOME (k', _) => 
             if ((search pPrefs k) < (search pPrefs k'))
+            (* k is preferred to p's current match *)
             then (update M p (SOME (k, ps)))
             else M
+
+        (* p is unmatched *)
         | NONE => (update M p (SOME (k, ps))))
+
+      (* enqueue k so we only visit it again after we've seen everything else in A *)
       val A' = As @ [(k, ps)]
     in
-      match' A' B M'
+      match A' B M'
     end
-
-fun match A B M = if (search M NONE = ~1) then M else (match' A B M)
