@@ -1,6 +1,6 @@
 -- Definition of stable matching problem:
--- Sets A : Set α, B : Set β of equal size
--- Preference functions pα (a, b) → ℕ, pβ (a, b) → ℕ
+-- Sets (A : Set α), (B : Set β) of equal size
+-- Preference functions pα : (A × B → ℕ), pβ : (A × B → ℕ)
 
 -- DEFINITIONS --
 
