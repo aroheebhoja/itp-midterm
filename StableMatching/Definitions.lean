@@ -26,6 +26,8 @@ variable
   (pb_linear : ∀ b ∈ B, Injective (pb b))
   (A_B_same_size : A.card = B.card)
 
+-- M is a subset of the cartesian product of A and B
+-- no throuples, no polycules
 def isMatching (M : Finset (α × β)) :=
   M ⊆ (A ×ˢ B) ∧
   (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ M → ¬∃ b₂ ∈ B, (a, b₂) ∈ M) ∧
@@ -45,7 +47,6 @@ def StableMatching (M : Finset (α × β)) :=
 variable
   -- M is a stable matching, there does not exist an unstable pair
   (M_is_stable : StableMatching pa pb M)
-
 
 theorem exists_larger : ∃ (M' : Finset (α × β)),
         StableMatching pa pb M' ∧ M'.card = M.card + 1 := by
