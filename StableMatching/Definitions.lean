@@ -25,6 +25,7 @@ variable
   (pa_linear : ∀ a ∈ A, Injective (pa a))
   (pb_linear : ∀ b ∈ B, Injective (pb b))
   (A_B_same_size : A.card = B.card)
+  (M : Finset (α × β))
 
 -- M is a subset of the cartesian product of A and B
 -- no throuples, no polycules, no infidelity
@@ -33,23 +34,18 @@ def isMatching (M : Finset (α × β)) :=
   (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ M → ¬∃ b₂ ∈ B, (a, b₂) ∈ M) ∧
   (∀ a₁ ∈ A, ∀ b ∈ B, (a₁, b) ∈ M → ¬∃ a₂ ∈ A, (a₂, b) ∈ M)
 
-variable
-  (M : Finset (α × β))
-  (M_is_matching : isMatching A B M)
-  (M_partial : M.card < A.card)
-
 def UnstablePair (a : α) (b : β) :=
   ∃ (c : α) (d : β), ((c, d) ∈ M) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
 
-def StableMatching (M : Finset (α × β)) :=
+def isStableMatching (M : Finset (α × β)) := isMatching A B M ∧
   ¬∃ (a : α) (b : β), ((a, b) ∈ M) ∧ (UnstablePair pa pb M a b)
 
 variable
-  -- M is a stable matching, there does not exist an unstable pair
-  (M_is_stable : StableMatching pa pb M)
+  (M_partial : M.card < A.card)
+  (M_stable : isStableMatching A B pa pb M)
 
 theorem exists_larger : ∃ (M' : Finset (α × β)),
-        StableMatching pa pb M' ∧ M'.card = M.card + 1 := by
+        isStableMatching A B pa pb M' ∧ M'.card = M.card + 1 := by
   -- Choose a ∈ A such that ¬∃ b ∈ B, ((a, b) ∈ M)
   -- a proposes to b, the top person on its pref list who has not yet been proposed to
   -- Case 1: b is unmatched. Then, M' = M ∪ (a, b). Done!
