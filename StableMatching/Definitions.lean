@@ -27,7 +27,7 @@ variable
   (A_B_same_size : A.card = B.card)
 
 -- M is a subset of the cartesian product of A and B
--- no throuples, no polycules
+-- no throuples, no polycules, no infidelity
 def isMatching (M : Finset (α × β)) :=
   M ⊆ (A ×ˢ B) ∧
   (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ M → ¬∃ b₂ ∈ B, (a, b₂) ∈ M) ∧
