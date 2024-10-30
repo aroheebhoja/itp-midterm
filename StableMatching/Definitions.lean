@@ -10,21 +10,58 @@ import Mathlib.Tactic
 
 -- How do I deal with striking people off a pref list?
 
-structure StableMatchingProblem {α : Type*} {β : Type*} where
-  A := Finset α
-  B := Finset β
-  p₁ := α × β → ℕ
-  p₂ := α × β → ℕ
-  p₁_injective := sorry
-  p₂_injective := sorry
-  same_size := sorry -- A and B have same cardinality
+section
+open Function
 
-structure Matching {α : Type*} [DecidableEq α]
-                   {β : Type*} [DecidableEq β] where
-  pairs := Finset (α × β)
-  a_unique := sorry
-  b_unique := sorry
-  size := sorry
+-- pa : α → β → β → Prop
+-- ∀ a ∈ A, IsLinearOrder (p a)
+-- pa a b1 b2 vs. (pa a b1) > (pa a b2)
+
+variable
+  (A : Finset α)
+  (B : Finset β)
+  (pa : α → β → ℕ)
+  (pb : β → α → ℕ)
+  (pa_linear : ∀ a ∈ A, Injective (pa a))
+  (pb_linear : ∀ b ∈ B, Injective (pb b))
+  (A_B_same_size : A.card = B.card)
+
+def isMatching (M : Finset (α × β)) :=
+  M ⊆ (A ×ˢ B) ∧
+  (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ M → ¬∃ b₂ ∈ B, (a, b₂) ∈ M) ∧
+  (∀ a₁ ∈ A, ∀ b ∈ B, (a₁, b) ∈ M → ¬∃ a₂ ∈ A, (a₂, b) ∈ M)
+
+variable
+  (M : Finset (α × β))
+  (M_is_matching : isMatching A B M)
+  (M_partial : M.card < A.card)
+
+def Unstable (a : α) (b : β) :=
+  ∃ (c : α) (d : β), ((c, d) ∈ M) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
+
+def Stable (M : Finset (α × β)) :=
+  ¬∃ (a : α) (b : β), ((a, b) ∈ M) ∧ (Unstable pa pb M a b)
+
+variable
+  -- M is a stable matching, there does not exist an unstable pair
+  (M_is_stable : Stable pa pb M)
+
+
+theorem exists_larger : ∃ (M' : Finset (α × β)), Stable pa pb M' ∧ M'.card = M.card + 1 := by
+  -- Choose a ∈ A such that ¬∃ b ∈ B, ((a, b) ∈ M)
+  -- a proposes to b, the top person on its pref list who has not yet been proposed to
+  -- Case 1: b is unmatched. Then, M' = M ∪ (a, b). Done!
+  -- Case 2 (*): ∃ a' ∈ A, ((a', b) ∈ M). Then,
+  -- M'' = (M \ (a', b)) ∪ (a, b).
+  -- Now, a' proposes to b', the next person on its pref list after b
+  -- Case 1: b' is unmatched. Then, M' = M'' ∪ (a', b'), and we're done
+  -- Case 2: ∃ a'' ∈ A, ((a'', b') ∈ M). Then, we repeat the above step (*) until we find
+  -- an unmatched member of B. We're guaranteed to find such a member
+  -- since M is a partial matching and B is a finite set. Done! (how do we formalize this???)
+  sorry
+
+
+end
 
 -- DEFINITIONS --
 
