@@ -3,19 +3,8 @@ import Mathlib.Order.Monotone.Basic
 import Mathlib.Algebra.Order.Ring.Basic
 import Mathlib.Tactic
 
--- Definition of stable matching problem:
--- Sets (A : Set α), (B : Set β) of equal size
--- Preference functions pα : (A × B → ℕ), pβ : (A × B → ℕ)
--- Preference functions have to be injective
-
--- How do I deal with striking people off a pref list?
-
 section
 open Function
-
--- pa : α → β → β → Prop
--- ∀ a ∈ A, IsLinearOrder (p a)
--- pa a b1 b2 vs. (pa a b1) > (pa a b2)
 
 variable
   (A : Finset α)
@@ -98,3 +87,8 @@ end
 -- in a stable matching of increased size
 
 -- Stable roommates problem
+
+
+-- pa : α → β → β → Prop
+-- ∀ a ∈ A, IsLinearOrder (p a)
+-- pa a b1 b2 vs. (pa a b1) > (pa a b2)
