@@ -25,22 +25,22 @@ variable
   (pa_linear : ∀ a ∈ A, Injective (pa a))
   (pb_linear : ∀ b ∈ B, Injective (pb b))
   (A_B_same_size : A.card = B.card)
-  (M : Finset (α × β))
 
--- M is a subset of the cartesian product of A and B
+-- X is a subset of the cartesian product of A and B
 -- no throuples, no polycules, no infidelity
-def isMatching (M : Finset (α × β)) :=
-  M ⊆ (A ×ˢ B) ∧
-  (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ M → ¬∃ b₂ ∈ B, (a, b₂) ∈ M) ∧
-  (∀ a₁ ∈ A, ∀ b ∈ B, (a₁, b) ∈ M → ¬∃ a₂ ∈ A, (a₂, b) ∈ M)
+def isMatching (X : Finset (α × β)) :=
+  X ⊆ (A ×ˢ B) ∧
+  (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ X → ¬∃ b₂ ∈ B, (a, b₂) ∈ X) ∧
+  (∀ a₁ ∈ A, ∀ b ∈ B, (a₁, b) ∈ X → ¬∃ a₂ ∈ A, (a₂, b) ∈ X)
 
-def UnstablePair (a : α) (b : β) :=
-  ∃ (c : α) (d : β), ((c, d) ∈ M) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
+def UnstablePair (X : Finset (α × β)) (a : α) (b : β) :=
+  ∃ (c : α) (d : β), ((c, d) ∈ X) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
 
-def isStableMatching (M : Finset (α × β)) := isMatching A B M ∧
-  ¬∃ (a : α) (b : β), ((a, b) ∈ M) ∧ (UnstablePair pa pb M a b)
+def isStableMatching (X : Finset (α × β)) := isMatching A B X ∧
+  ¬∃ (a : α) (b : β), ((a, b) ∈ X) ∧ (UnstablePair pa pb X a b)
 
 variable
+  (M : Finset (α × β))
   (M_partial : M.card < A.card)
   (M_stable : isStableMatching A B pa pb M)
 
