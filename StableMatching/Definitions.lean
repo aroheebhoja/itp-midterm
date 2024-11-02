@@ -22,7 +22,6 @@ def isMatching (X : Finset (α × β)) :=
   (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ X → ¬∃ b₂ ∈ B, (a, b₂) ∈ X) ∧
   (∀ a₁ ∈ A, ∀ b ∈ B, (a₁, b) ∈ X → ¬∃ a₂ ∈ A, (a₂, b) ∈ X)
 
--- Make sure these are different or something
 def UnstablePair (X : Finset (α × β)) (a : α) (b : β) :=
   ∃ (c : α) (d : β), ((c, d) ∈ X) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
 
@@ -41,6 +40,10 @@ variable
 theorem SM1 : ∃ (M' : Finset (α × β)), V pb M' > V pb M := by
   sorry
 
+
+-- A stable matching with variant score (____) implies totality
+
+-- THESE ARE BAD
 -- Theorem 2: the upper bound of the variant is ???????
 theorem SM2 : ∀ (X : Finset (α × β)) (h : isStableMatching A B pa pb X),
   V pb X ≤ (A.card) ^ 2 := by
