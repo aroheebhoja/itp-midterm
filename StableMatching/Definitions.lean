@@ -22,16 +22,62 @@ def isMatching (X : Finset (α × β)) :=
   (∀ a ∈ A, ∀ b₁ ∈ B, (a, b₁) ∈ X → ¬∃ b₂ ∈ B, (a, b₂) ∈ X) ∧
   (∀ a₁ ∈ A, ∀ b ∈ B, (a₁, b) ∈ X → ¬∃ a₂ ∈ A, (a₂, b) ∈ X)
 
+-- Make sure these are different or something
 def UnstablePair (X : Finset (α × β)) (a : α) (b : β) :=
   ∃ (c : α) (d : β), ((c, d) ∈ X) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
 
 def isStableMatching (X : Finset (α × β)) := isMatching A B X ∧
   ¬∃ (a : α) (b : β), ((a, b) ∈ X) ∧ (UnstablePair pa pb X a b)
 
+def V (X : Finset (α × β)) := X.sum (fun (a, b) => pb b a)
+
 variable
   (M : Finset (α × β))
   (M_partial : M.card < A.card)
   (M_stable : isStableMatching A B pa pb M)
+
+-- Theorem 1: if there exists a partial stable matching M, we can find a stable matching M'
+-- with a higher variant score
+theorem SM1 : ∃ (M' : Finset (α × β)), V pb M' > V pb M := by
+  sorry
+
+-- Theorem 2: the upper bound of the variant is ???????
+theorem SM2 : ∀ (X : Finset (α × β)) (h : isStableMatching A B pa pb X),
+  V pb X ≤ (A.card) ^ 2 := by
+  sorry
+
+-- Theorem 3: this upper bound is only reached if the stable matching is total
+theorem SM3 (X : Finset (α × β)) : (isStableMatching A B pa pb X) ∧ (V pb X = A.card ^ 2) →
+  X.card = A.card := by
+  rintro ⟨h1, h2⟩
+  sorry
+
+-- Theorem 4: given an instance of the SMP, there exists a total stable matching
+
+variable (A1 A2 : Finset α)
+
+open Finset
+
+example (h1 : A1 ⊆ A2) (h2 : A1.card < A2.card) :
+  ∃ x ∈ A2, x ∉ A1 := by
+  -- apply not_subset.mp
+  -- intro h3
+  -- have : A1 = A2 := by
+  --   exact Subset.antisymm h1 h3
+  -- subst this
+  -- simp at h2
+  apply exists_of_ssubset
+  rw [ssubset_iff_subset_ne]
+  use h1
+  contrapose! h2
+  rw [h2]
+
+-- define sets of A and B in partial matching
+-- A' ⊂ A, choose a thing in A that is not in A'
+-- There is probably a theorem to do this
+
+-- Pick a thing in A that is not in the matching -- can prove this exists
+
 
 theorem exists_larger : ∃ (M' : Finset (α × β)),
         isStableMatching A B pa pb M' ∧ M'.card = M.card + 1 := by
