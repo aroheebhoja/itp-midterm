@@ -33,6 +33,8 @@ def UnstablePair (X : Finset (α × β)) (a : α) (b : β) :=
 def isStableMatching (X : Finset (α × β)) := isMatching A B X ∧
   ¬∃ (a : α) (b : β), ((a, b) ∈ X) ∧ (UnstablePair pa pb X a b)
 
+-- Variant score: sum over all b in the matching of how much they prefer their current partner
+-- by improvement lemma, this has to increase at each iteration of the algorithm
 def V (X : Finset (α × β)) := X.sum (fun (a, b) => pb b a)
 
 variable
