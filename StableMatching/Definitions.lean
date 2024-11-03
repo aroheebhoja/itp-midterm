@@ -65,8 +65,13 @@ theorem SM1 : ∃ (M' : Finset (α × β)), V pb M' > V pb M := by
   sorry
 
 
--- Theorem 2: a stable matching with a variant score (___) implies totality
-theorem SM2 (X : Finset (α × β)) : V pb X = 15 → X.card = A.card := by
+-- Theorem 2: a stable matching with a variant score ≥ (___) implies totality
+-- this works with variant based on B because if A is proposing then the resulting
+-- SM is B-pessimal
+
+-- and, the variant score of a B-pessimal total SM is a lower bound on the
+-- variant score of any total SM
+theorem SM2 (X : Finset (α × β)) : V pb X ≥ 15 → X.card = A.card := by
   sorry
 
 
