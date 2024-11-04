@@ -3,11 +3,36 @@ import Mathlib.Order.Monotone.Basic
 import Mathlib.Algebra.Order.Ring.Basic
 import Mathlib.Tactic
 
+#check List.argmax
+
+namespace Finset
+
+variable {α : Type*} [DecidableEq α] [Inhabited α]
+
+noncomputable def argmax (s : Finset α) (f : α → ℕ) : α :=
+  s.toList.argmax f |>.getD default
+
+theorem argmax_spec (s : Finset α) (f : α → ℕ) (h : s ≠ ∅) :
+    argmax s f ∈ s ∧ ∀ x ∈ s, f x ≤ f (argmax s f) := by
+  have : argmax s f ∈ s.toList.argmax f := by
+    sorry
+  simp [argmax]
+  sorry
+
+
+end Finset
+
+
 section
 open Function
 open Finset
 
-variable
+variable {α β : Type*} [Fintype α] [Fintype β]
+
+-- x ∈ A now becomes x : α
+-- (Finset.univ : Finset α)
+-- Fintype.card α
+
   (A : Finset α)
   (B : Finset β)
   (pa : α → β → ℕ)
@@ -41,27 +66,42 @@ variable
   (M : Finset (α × β))
   (M_partial : M.card < A.card)
   (M_stable : isStableMatching A B pa pb M)
-  (A' : Finset α)
-  (B' : Finset β)
-  (A'_def : A' ⊂ A ∧ (x ∈ A' → ∃ b ∈ B', (x, b) ∈ M))
-  (B'_def : B' ⊂ B ∧ (y ∈ B' → ∃ a ∈ A', (a, y) ∈ M))
+  -- (A' : Finset α)
+  -- (B' : Finset β)
+  -- (A'_def : A' ⊂ A ∧ (x ∈ A' ↔ ∃ b ∈ B', (x, b) ∈ M))
+  -- (B'_def : B' ⊂ B ∧ (y ∈ B' ↔ ∃ a ∈ A', (a, y) ∈ M))
 
+def A' : Set α := {a ∈ A | ∃ b ∈ B, (a, b) ∈ M}
+-- M.image (Prod.fst)
+def B' : Set β := {b ∈ B | ∃ a ∈ A, (a, b) ∈ M}
+
+-- ∃ x : α (x ∉ A')
+-- suffices ∃ x ∈ (Finset.univ : Finset α), x ∉ A'
+
+#print A'
 include A'_def
+
 theorem can_choose : ∃ a ∈ A, a ∉ A' := by
   apply exists_of_ssubset
   exact A'_def.left
 
-def choose_next' (a : α) (n : ℕ) :=
-  let b := pa' a n
-  if (∃ x ∈ A, (x, b) ∈ M) then -- if a is already matched to someone
-    (if pb b a > pb b x then b else choose_next' a (n + 1))
-    else b
+def choose_next (a : α) :=
+  let unmatched := {b ∈ B | ¬∃ a' ∈ A, (a', b) ∈ M}
+  let prefers_a := {(b ∈ B | (∃ a' ∈ A, (a', b) ∈ M) )}
+  sorry
 
-def choose_next (a : α) := choose_next' a 0
+-- def choose_next' (a : α) (n : ℕ) :=
+--   let b := pa' a n
+--   if (∃ x ∈ A, (x, b) ∈ M) then -- if a is already matched to someone
+--     (if pb b a > pb b x then b else choose_next' a (n + 1))
+--     else b
+
+-- def choose_next (a : α) := choose_next' a 0
 
 -- Theorem 1: if there exists a partial stable matching M, we can find a stable matching M'
 -- with a higher variant score
 theorem SM1 : ∃ (M' : Finset (α × β)), V pb M' > V pb M := by
+  -- case 1: t
   sorry
 
 
@@ -71,9 +111,8 @@ theorem SM1 : ∃ (M' : Finset (α × β)), V pb M' > V pb M := by
 
 -- and, the variant score of a B-pessimal total SM is a lower bound on the
 -- variant score of any total SM
-theorem SM2 (X : Finset (α × β)) : V pb X ≥ 15 → X.card = A.card := by
+theorem SM2 (X : Finset (α × β)) : ∃ (v : ℕ), V pb X ≥ v → X.card = A.card := by
   sorry
-
 
 -- Theorem 3: can apply theorem 1 inductively to prove that for every instance
 -- of the SMP there exists a total stable matching ..
