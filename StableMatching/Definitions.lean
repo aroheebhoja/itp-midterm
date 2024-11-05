@@ -135,9 +135,75 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
   use (M \ {(a', b)}) ∪ {(a, b)}
   constructor
   · constructor
-    · sorry
-    · sorry
-  · sorry
+    · intro x y₁ y₂ ⟨h1, h2⟩
+      have ha : x = a ∨ x ≠ a := by
+        exact eq_or_ne x a
+      rcases ha with eq | ne
+      have hm : ∀ y, (x, y) ∉ M := by
+        rw [eq]
+        rw [A'_def] at ha
+        simpa using ha
+      simp at h1
+      simp at h2
+      rcases h1 with ⟨hm1, _⟩ | ⟨_, h1⟩
+      · specialize hm y₁
+        contradiction
+      · rcases h2 with ⟨hm2, _⟩ | ⟨_, h2⟩
+        · specialize hm y₂
+          contradiction
+        rw [h1, h2]
+      have h3 : (x, y₁) ∈ M := by
+        simp at h1
+        rcases h1 with ⟨left, _⟩ | ⟨right, _⟩
+        · exact left
+        contradiction
+      have h4 : (x, y₂) ∈ M := by
+        simp at h2
+        rcases h2 with ⟨left, _⟩ | ⟨right, _⟩
+        · exact left
+        contradiction
+      rcases M_stable with ⟨⟨left, right⟩, _⟩
+      apply left x y₁ y₂
+      exact ⟨h3, h4⟩
+    · intro x₁ y x₂ ⟨h1, h2⟩
+      have hb : y = b ∨ y ≠ b := by
+        exact eq_or_ne y b
+      rcases hb with eq | ne
+      have h : ∀ x, (x, y) ∈ M → x = a' := by
+        intro x hx
+        rcases M_stable with ⟨⟨_, hm⟩, _⟩
+        apply hm x y a'
+        constructor
+        exact hx
+        rw [eq]
+        exact ha'
+      simp at h1
+      simp at h2
+      rcases h1 with ⟨hc1, hc2⟩ | ⟨h1, _⟩
+      · specialize hc2 (h x₁ hc1)
+        contradiction
+      · rcases h2 with ⟨hc1, hc2⟩ | ⟨h2, _⟩
+        · specialize hc2 (h x₂ hc1)
+          contradiction
+        rw [h1, h2]
+      have h3 : (x₁, y) ∈ M := by
+        simp at h1
+        rcases h1 with ⟨hc1, hc2⟩ | ⟨h1, _⟩
+        · exact hc1
+        contradiction
+      have h4 : (x₂, y) ∈ M := by
+        simp at h2
+        rcases h2 with ⟨hc1, hc2⟩ | ⟨h2, _⟩
+        · exact hc1
+        contradiction
+      rcases M_stable with ⟨⟨left, right⟩, _⟩
+      apply right x₁ y x₂
+      exact ⟨h3, h4⟩
+  · have h : V pb (M \ {(a', b)} ∪ {(a, b)}) =
+             V pb M - V pb {(a', b)} + V pb {(a, b)} := by
+      sorry
+    rw [h]
+    sorry
   use M ∪ {(a, b)}
   constructor
   · constructor
