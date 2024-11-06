@@ -4,8 +4,6 @@ import Mathlib.Algebra.Order.Ring.Basic
 import Mathlib.Tactic
 set_option linter.unusedSectionVars false
 
-#check List.argmax
-
 namespace Finset
 
 variable {α : Type*} [Inhabited α]
@@ -342,7 +340,6 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
     rw [this]
     specialize pb_pos b a
     assumption
-
 
 -- Theorem 2: a stable matching with a variant score ≥ (___) implies totality
 -- this works with variant based on B because if A is proposing then the resulting
