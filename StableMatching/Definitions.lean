@@ -25,9 +25,8 @@ noncomputable def argmax (f : α → ℕ) (s : Finset α) : α :=
   else
     default
 
-theorem argmax_spec (s : Finset α) (f : α → ℕ) (h : s ≠ ∅) :
+theorem argmax_spec (s : Finset α) (f : α → ℕ) (h : s.Nonempty) :
     s.argmax f ∈ s ∧ ∀ x ∈ s, f x ≤ f (s.argmax f) := by
-  have h : s.Nonempty := by exact nonempty_iff_ne_empty.mpr h
   have h' : (s.image f).Nonempty := by
     rw [image_nonempty]; exact h
   have : (s.image f).max' h' ∈ s.image f := by
@@ -41,8 +40,6 @@ theorem argmax_spec (s : Finset α) (f : α → ℕ) (h : s ≠ ∅) :
   rw [this.2]
   intro x hx
   apply le_max' _ _ (mem_image_of_mem f hx)
-
-end Finset
 
 section
 open Function
@@ -58,7 +55,7 @@ variable {α β : Type*} [Fintype α] [Fintype β] [DecidableEq α] [DecidableEq
   (pa : α → β → ℕ)
   (pb : β → α → ℕ)
   (pa_pos : ∀ a, ∀ b, pa a b > 0)
-  (pb_pos : ∀ a, ∀ b, pb b a > 0)
+  (pb_pos : ∀ b, ∀ a, pb b a > 0)
   (pa_linear : ∀ a, Injective (pa a))
   (pb_linear : ∀ b, Injective (pb b))
   (A_B_same_size : Fintype.card α = Fintype.card β)
@@ -79,7 +76,7 @@ def V (X : Finset (α × β)) := X.sum (fun (a, b) => pb b a)
 
 variable
   (M : Finset (α × β))
-  (M_partial : #M < Fintype.card α)
+  (M_partial : #M < Fintype.card α ∧ #M < Fintype.card β)
   (M_stable : isStableMatching pa pb M)
   (M_nonempty : M.Nonempty)
 
@@ -93,6 +90,41 @@ noncomputable def choose_next (a : α) : β :=
   let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
   let choices := unmatched ∪ preferred
   choices.argmax (pa a)
+
+include M_partial
+theorem exists_unmatched_b : ∃ b, b ∉ (B' M) := by
+  let B' := B' M
+  have hcard : #B' ≤ #M := by
+    apply card_image_le
+  have hB' : B' ⊂ univ := by
+      apply ssubset_univ_iff.mpr
+      have : #B' < Fintype.card β := by
+        exact Nat.lt_of_le_of_lt hcard M_partial.right
+      exact (card_lt_iff_ne_univ B').mp this
+  apply exists_of_ssubset at hB'
+  rcases hB' with ⟨x, _, hxr⟩
+  use x
+
+theorem choose_next_spec : choose_next pa pb M a ∈ Finset.univ \ (B' M) ∨
+                      choose_next pa pb M a ∈ {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'} := by
+  let b := choose_next pa pb M a
+  have b_def : b = choose_next pa pb M a := by rfl
+  let unmatched : Finset β := Finset.univ \ (B' M)
+  let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
+  let choices := (unmatched ∪ preferred)
+  have ⟨x, hx⟩ : ∃ b, b ∉ (B' M) := by
+    exact exists_unmatched_b M M_partial
+  have nonempty : choices.Nonempty := by
+    apply Nonempty.inl
+    apply nonempty_iff_ne_empty.mpr
+    aesop
+  have : b = choices.argmax (pa a) := by
+    rw [b_def]
+    rfl
+  rcases argmax_spec (unmatched ∪ preferred) (pa a) nonempty with ⟨left, _⟩
+  have : b ∈ (unmatched ∪ preferred) := by
+    exact left
+  aesop
 
 -- Theorem 1: if there exists a partial stable matching M, we can find a stable matching M'
 -- with a higher variant score
@@ -112,7 +144,7 @@ theorem SM0 : ∃ a, a ∉ (A' M) := by
   have hA' : A' ⊂ univ := by
       apply ssubset_univ_iff.mpr
       have : #A' < Fintype.card α := by
-        exact Nat.lt_of_le_of_lt hcard M_partial
+        exact Nat.lt_of_le_of_lt hcard M_partial.left
       exact (card_lt_iff_ne_univ A').mp this
   apply exists_of_ssubset at hA'
   rcases hA' with ⟨x, _, hxr⟩
@@ -127,10 +159,7 @@ theorem SM0 : ∃ a, a ∉ (A' M) := by
 
 variable (A : Finset ℕ) (b : ℕ)
 
-theorem test (h : b ∈ A) : (A \ {b}).sum id ≤ A.sum id := by
-  sorry
-
-
+include pb_pos
 theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M := by
   let B' := B' M
   let A' := A' M
@@ -141,7 +170,6 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
     exact Decidable.em (b ∈ B')
   have A'_def : A' = Finset.image (Prod.fst) M := by rfl
   have B'_def : B' = Finset.image (Prod.snd) M := by rfl
-  -- have VM_def : V = M.sum (fun (a, b) => pb b a)
   rcases h1 with matched | unmatched
   have ⟨a', ha'⟩ : ∃ a', (a', b) ∈ M := by
     rw [B'_def] at matched
@@ -227,6 +255,27 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
             V pb M - V pb {(a', b)} := by
       sorry
     rw [h1, h2]
+    have : V pb {(a, b)} = pb b a := by
+      apply sum_singleton
+    rw [this]
+    have : V pb {(a', b)} = pb b a' := by
+      apply sum_singleton
+    rw [this]
+    have : (pb b a > pb b a') := by
+      have : b ∈ Finset.univ \ (B') ∨
+          b ∈ {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'} := by
+          exact choose_next_spec pa pb M M_partial
+      rcases this with left | right
+      · simp at left
+        contradiction
+      · simp at right
+        rcases right with ⟨x, ⟨h1, h2⟩⟩
+        have : x = a' := by
+          rcases M_stable with ⟨⟨_, right⟩, _⟩
+          apply right x b a'
+          exact ⟨h1, ha'⟩
+        rw [this] at h2
+        linarith
     sorry
   use M ∪ {(a, b)}
   constructor
@@ -301,8 +350,11 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
       use (a, b)
     rw [h1]
     apply Nat.lt_add_of_pos_right
-    sorry
-
+    have : V pb {(a, b)} = pb b a := by
+      apply sum_singleton
+    rw [this]
+    specialize pb_pos b a
+    assumption
 
 
 -- Theorem 2: a stable matching with a variant score ≥ (___) implies totality
