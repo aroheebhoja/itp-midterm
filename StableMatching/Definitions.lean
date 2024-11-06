@@ -57,6 +57,8 @@ variable {α β : Type*} [Fintype α] [Fintype β] [DecidableEq α] [DecidableEq
 
   (pa : α → β → ℕ)
   (pb : β → α → ℕ)
+  (pa_pos : ∀ a, ∀ b, pa a b > 0)
+  (pb_pos : ∀ a, ∀ b, pb b a > 0)
   (pa_linear : ∀ a, Injective (pa a))
   (pb_linear : ∀ b, Injective (pb b))
   (A_B_same_size : Fintype.card α = Fintype.card β)
@@ -118,6 +120,17 @@ theorem SM0 : ∃ a, a ∉ (A' M) := by
 
 #check product_image_snd
 
+#check sum_union
+#check sum_sdiff_eq_sub
+
+#synth AddCommMonoid ℕ
+
+variable (A : Finset ℕ) (b : ℕ)
+
+theorem test (h : b ∈ A) : (A \ {b}).sum id ≤ A.sum id := by
+  sorry
+
+
 theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M := by
   let B' := B' M
   let A' := A' M
@@ -128,6 +141,7 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
     exact Decidable.em (b ∈ B')
   have A'_def : A' = Finset.image (Prod.fst) M := by rfl
   have B'_def : B' = Finset.image (Prod.snd) M := by rfl
+  -- have VM_def : V = M.sum (fun (a, b) => pb b a)
   rcases h1 with matched | unmatched
   have ⟨a', ha'⟩ : ∃ a', (a', b) ∈ M := by
     rw [B'_def] at matched
@@ -199,10 +213,20 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
       rcases M_stable with ⟨⟨left, right⟩, _⟩
       apply right x₁ y x₂
       exact ⟨h3, h4⟩
-  · have h : V pb (M \ {(a', b)} ∪ {(a, b)}) =
-             V pb M - V pb {(a', b)} + V pb {(a, b)} := by
+  · have h1 : V pb (M \ {(a', b)} ∪ {(a, b)}) =
+             V pb (M \ {(a', b)}) + V pb {(a, b)} := by
+      apply sum_union
+      simp
+      rcases M_stable with ⟨⟨_, right⟩, _⟩
+      specialize right a b a'
+      intro ha
+      exact right ⟨ha, ha'⟩
+    have : {(a', b)} ⊆ M := by
+      exact singleton_subset_iff.mpr ha'
+    have h2 : V pb (M \ {(a', b)}) =
+            V pb M - V pb {(a', b)} := by
       sorry
-    rw [h]
+    rw [h1, h2]
     sorry
   use M ∪ {(a, b)}
   constructor
@@ -267,7 +291,18 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
       rcases M_stable with ⟨⟨left, right⟩, _⟩
       apply right x₁ y x₂
       exact ⟨h3, h4⟩
-  · sorry
+  · have h1 : V pb (M ∪ {(a, b)}) =
+             V pb M + V pb {(a, b)} := by
+      apply sum_union
+      simp
+      contrapose! ha
+      rw [A'_def]
+      apply mem_image.mpr
+      use (a, b)
+    rw [h1]
+    apply Nat.lt_add_of_pos_right
+    sorry
+
 
 
 -- Theorem 2: a stable matching with a variant score ≥ (___) implies totality
