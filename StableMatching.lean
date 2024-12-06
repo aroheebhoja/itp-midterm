@@ -57,12 +57,13 @@ def isMatching (X : Finset (α × β)) :=
   (∀ a, ∀ b₁, ∀ b₂, (a, b₁) ∈ X ∧ (a, b₂) ∈ X → b₁ = b₂) ∧
   (∀ a₁, ∀ b, ∀ a₂, (a₁, b) ∈ X ∧ (a₂, b) ∈ X → a₁ = a₂)
 
-def UnstablePair (X : Finset (α × β)) (a : α) (b : β) :=
-  ∃ (c : α) (d : β), ((c, d) ∈ X) ∧ (pa a d > pa a b) ∧ (pb d a > pb d c)
+def IsUnstablePair x y (X : Finset (α × β)) :=
+  (x, y) ∉ X ∧ ∃ a' b', (x, b') ∈ X ∧ (a', y) ∈ X ∧ pa x y > pa x b' ∧ pb y x > pb y a'
 
 def isStableMatching (X : Finset (α × β)) := isMatching X ∧
-  ¬∃ (a : α) (b : β), ((a, b) ∈ X) ∧ (UnstablePair pa pb X a b)
+  ∀ a b, ¬IsUnstablePair pa pb a b X
 
+include pa_linear pb_linear
 -- Variant score
 def V (X : Finset (α × β)) := X.sum (fun (a, b) => pb b a)
 
@@ -80,6 +81,9 @@ noncomputable def choose_next (a : α) : β :=
   let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
   let choices := unmatched ∪ preferred
   choices.argmax (pa a)
+
+variable
+  (matched_implies_chosen: ∀ a b, (a, b) ∈ M → b = choose_next pa pb (M \ {(a, b)}) a)
 
 include M_partial
 theorem exists_unmatched_b : ∃ b, b ∉ (B' M) := by
@@ -103,7 +107,7 @@ theorem choose_next_spec : choose_next pa pb M a ∈ Finset.univ \ (B' M) ∨
   let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
   let choices := (unmatched ∪ preferred)
   have ⟨x, hx⟩ : ∃ b, b ∉ (B' M) := by
-    exact exists_unmatched_b M M_partial
+    exact exists_unmatched_b pa pb pa_linear pb_linear M M_partial
   have nonempty : choices.Nonempty := by
     apply Nonempty.inl
     apply nonempty_iff_ne_empty.mpr
@@ -115,6 +119,142 @@ theorem choose_next_spec : choose_next pa pb M a ∈ Finset.univ \ (B' M) ∨
   have : b ∈ (unmatched ∪ preferred) := by
     exact left
   aesop
+
+theorem choose_next_is_argmax : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
+  rintro a ⟨a', b', h1, h2, h3⟩
+  let unmatched : Finset β := Finset.univ \ (B' M)
+  let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
+  have ha : b' ∈ preferred := by
+    simp [preferred]
+    use a'
+  have hb : b' ∈ unmatched ∪ preferred := by
+    simp; right; exact ha
+  have nonempty : (unmatched ∪ preferred).Nonempty := by
+    apply Nonempty.inr
+    apply nonempty_iff_ne_empty.mpr
+    exact ne_empty_of_mem ha
+  have hd: ∀ y ∈ (unmatched ∪ preferred), pa a y ≤ pa a (choose_next pa pb M a) := by
+    exact (argmax_spec (unmatched ∪ preferred) (pa a) nonempty).right
+  specialize hd b' hb
+  linarith
+
+theorem choose_next_is_argmax' : ∀ a, ¬∃ b, b ∈ (Finset.univ \ (B' M)) ∧ pa a b > pa a (choose_next pa pb M a) := by
+  rintro a ⟨b, h1, h2⟩
+  let unmatched : Finset β := Finset.univ \ (B' M)
+  let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
+  have ha : b ∈ unmatched := by
+    simp [unmatched]
+    exact mem_compl.mp h1
+  have hb : b ∈ unmatched ∪ preferred := by
+    simp; left; exact ha
+  have nonempty : (unmatched ∪ preferred).Nonempty := by
+    apply Nonempty.inl
+    apply nonempty_iff_ne_empty.mpr
+    exact ne_empty_of_mem ha
+  have hd: ∀ y ∈ (unmatched ∪ preferred), pa a y ≤ pa a (choose_next pa pb M a) := by
+    exact (argmax_spec (unmatched ∪ preferred) (pa a) nonempty).right
+  specialize hd b hb
+  linarith
+
+include matched_implies_chosen M_stable
+theorem all_unmatched_are_worse : ∀ a b b', (a, b) ∈ M ∧ b' ∈ (Finset.univ \ (B' M)) → pa a b > pa a b' := by
+  rintro a b b' ⟨h1, h2⟩
+  have hb : b = choose_next pa pb (M \ {(a, b)}) a := by exact matched_implies_chosen a b h1
+  simp [choose_next] at hb
+  let unmatched : Finset β := Finset.univ \ (B' (M \ {(a, b)}))
+  let preferred : Finset β := {b | ∃ a', (a', b) ∈ (M \ {(a, b)}) ∧ pb b a > pb b a'}
+  have preferred_spec : preferred =
+        filter (fun b_1 => ∃ a', ((a', b_1) ∈ M ∧ (a' = a → ¬b_1 = b)) ∧ pb b_1 a' < pb b_1 a) univ := by
+      ext x
+      constructor
+      intro hx
+      simp [preferred] at hx
+      rcases hx with ⟨w, ⟨hw1, hw2⟩, hw3⟩
+      simp
+      use w
+      constructor
+      constructor
+      exact hw1
+      intro h
+      exfalso
+      contradiction
+      exact hw3
+      intro hx
+      simp [preferred]
+      simp at hx
+      rcases hx with ⟨w, ⟨hw1, hw2⟩, hw3⟩
+      use w
+      constructor
+      constructor
+      exact hw1
+      contrapose! hw2
+      rw [hw2] at hw1
+      rcases M_stable with ⟨⟨M_matching, _⟩, _⟩
+      specialize M_matching a x b ⟨hw1, h1⟩
+      exact ⟨hw2, M_matching⟩
+      exact hw3
+  let choices := unmatched ∪ preferred
+  have ⟨x, hx⟩ : ∃ b, b ∉ (B' M) := by
+    exact exists_unmatched_b pa pb pa_linear pb_linear M M_partial
+  have h3 : B' (M \ {(a, b)}) ⊆ B' M := by
+    simp [B']
+    apply image_subset_image
+    simp
+  have h4 : x ∉ B' (M \ {(a, b)}) := by
+    contrapose! hx
+    apply mem_of_subset h3
+    exact hx
+  have h5 : x ∈ unmatched := by
+    have : x ∈ (M \ {(a, b)}).B' ∨ x ∈ univ \ (M \ {(a, b)}).B' := by
+      simp
+      exact Decidable.em (x ∈ (M \ {(a, b)}).B')
+    rcases this with h | h
+    contradiction
+    exact h
+  have nonempty : (unmatched ∪ preferred).Nonempty := by
+    apply Nonempty.inl
+    apply nonempty_iff_ne_empty.mpr
+    exact ne_empty_of_mem h5
+  have h6 : ∀ c ∈ choices, pa a c ≤ pa a (choices.argmax (pa a)) := by
+    exact (argmax_spec choices (pa a) nonempty).right
+  have h7 : b = choices.argmax (pa a) := by
+    rw [hb]
+    rw [← preferred_spec]
+  have h8 : b' ∈ choices := by
+    have : univ \ M.B' ⊆ unmatched := by
+      simp [unmatched]
+      intro x hx
+      simp at hx
+      simp
+      exact fun a => hx (h3 a)
+    have h : b' ∈ unmatched := by
+      exact mem_of_subset this h2
+    have : unmatched ⊆ choices := by
+      exact subset_union_left
+    exact mem_of_subset this h
+  specialize h6 b' h8
+  rw [← h7] at h6
+  have : b ≠ b' := by
+    have : b ∈ B' M := by
+      simp [B']
+      use a
+    contrapose! this
+    rw [this]
+    simp at h2
+    exact h2
+  have : pa a b' ≠ pa a b := by
+    contrapose! pa_linear
+    use a
+    simp [Injective]
+    use b, b'
+    constructor
+    rw [eq_comm] at pa_linear
+    exact pa_linear
+    exact this
+  exact lt_of_le_of_ne h6 this
+
+include M_stable
+
 
 -- Theorem 1: if there exists a partial stable matching M, we can find a stable matching M'
 -- with a higher variant score
@@ -136,12 +276,12 @@ theorem exists_unmatched_A : ∃ a, a ∉ (A' M) := by
 
 variable (A : Finset ℕ) (b : ℕ)
 
-include pb_pos
-theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M := by
+include pb_pos pa_linear pb_linear matched_implies_chosen
+theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M' > V pb M := by
   let B' := B' M
   let A' := A' M
   have ⟨a, ha⟩ : ∃ a, a ∉ A' := by
-    exact exists_unmatched_A pa pb M M_partial M_stable
+    exact exists_unmatched_A pa pb pa_linear pb_linear M M_partial M_stable matched_implies_chosen
   let b : β := choose_next pa pb M a
   have h1 : b ∈ B' ∨ b ∉ B' := by
     exact Decidable.em (b ∈ B')
@@ -151,73 +291,133 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
   have ⟨a', ha'⟩ : ∃ a', (a', b) ∈ M := by
     rw [B'_def] at matched
     simpa using matched
+  have hpref : (pb b a > pb b a') := by
+      have : b ∈ Finset.univ \ (B') ∨
+          b ∈ {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'} := by
+          exact choose_next_spec pa pb pa_linear pb_linear M M_partial
+      rcases this with left | right
+      · simp at left
+        contradiction
+      · simp at right
+        rcases right with ⟨x, ⟨h1, h2⟩⟩
+        have : x = a' := by
+          rcases M_stable with ⟨⟨_, right⟩, _⟩
+          apply right x b a'
+          exact ⟨h1, ha'⟩
+        rw [this] at h2
+        linarith
   use (M \ {(a', b)}) ∪ {(a, b)}
   constructor
   · constructor
-    · intro x y₁ y₂ ⟨h1, h2⟩
-      have ha : x = a ∨ x ≠ a := by
-        exact eq_or_ne x a
-      rcases ha with eq | ne
-      have hm : ∀ y, (x, y) ∉ M := by
-        rw [eq]
-        rw [A'_def] at ha
-        simpa using ha
-      simp at h1
-      simp at h2
-      rcases h1 with ⟨hm1, _⟩ | ⟨_, h1⟩
-      · specialize hm y₁
-        contradiction
-      · rcases h2 with ⟨hm2, _⟩ | ⟨_, h2⟩
-        · specialize hm y₂
+    · constructor
+      · intro x y₁ y₂ ⟨h1, h2⟩
+        have ha : x = a ∨ x ≠ a := by
+          exact eq_or_ne x a
+        rcases ha with eq | ne
+        have hm : ∀ y, (x, y) ∉ M := by
+          rw [eq]
+          rw [A'_def] at ha
+          simpa using ha
+        simp at h1 h2
+        rcases h1 with ⟨hm1, _⟩ | ⟨_, h1⟩
+        · specialize hm y₁
           contradiction
-        rw [h1, h2]
-      have h3 : (x, y₁) ∈ M := by
-        simp at h1
-        rcases h1 with ⟨left, _⟩ | ⟨right, _⟩
-        · exact left
-        contradiction
-      have h4 : (x, y₂) ∈ M := by
-        simp at h2
-        rcases h2 with ⟨left, _⟩ | ⟨right, _⟩
-        · exact left
-        contradiction
-      rcases M_stable with ⟨⟨left, _⟩, _⟩
-      apply left x y₁ y₂
-      exact ⟨h3, h4⟩
-    · intro x₁ y x₂ ⟨h1, h2⟩
-      have hb : y = b ∨ y ≠ b := by
-        exact eq_or_ne y b
-      rcases hb with eq | ne
-      have h : ∀ x, (x, y) ∈ M → x = a' := by
-        intro x hx
-        rcases M_stable with ⟨⟨_, hm⟩, _⟩
-        apply hm x y a'
-        constructor
-        exact hx
-        rw [eq]
-        exact ha'
-      simp at h1
-      simp at h2
-      rcases h1 with ⟨hc1, hc2⟩ | ⟨h1, _⟩
-      · specialize hc2 (h x₁ hc1)
-        contradiction
-      · rcases h2 with ⟨hc1, hc2⟩ | ⟨h2, _⟩
-        · specialize hc2 (h x₂ hc1)
+        · rcases h2 with ⟨hm2, _⟩ | ⟨_, h2⟩
+          · specialize hm y₂
+            contradiction
+          rw [h1, h2]
+        have h3 : (x, y₁) ∈ M := by
+          simp at h1
+          rcases h1 with ⟨left, _⟩ | ⟨right, _⟩
+          · exact left
           contradiction
-        rw [h1, h2]
-      have h3 : (x₁, y) ∈ M := by
-        simp at h1
-        rcases h1 with ⟨hc1, _⟩ | ⟨_, _⟩
-        · exact hc1
-        contradiction
-      have h4 : (x₂, y) ∈ M := by
-        simp at h2
-        rcases h2 with ⟨hc1, _⟩ | ⟨_, _⟩
-        · exact hc1
-        contradiction
-      rcases M_stable with ⟨⟨_, right⟩, _⟩
-      apply right x₁ y x₂
-      exact ⟨h3, h4⟩
+        have h4 : (x, y₂) ∈ M := by
+          simp at h2
+          rcases h2 with ⟨left, _⟩ | ⟨right, _⟩
+          · exact left
+          contradiction
+        rcases M_stable with ⟨⟨left, _⟩, _⟩
+        apply left x y₁ y₂
+        exact ⟨h3, h4⟩
+      · intro x₁ y x₂ ⟨h1, h2⟩
+        have hb : y = b ∨ y ≠ b := by
+          exact eq_or_ne y b
+        rcases hb with eq | ne
+        have h : ∀ x, (x, y) ∈ M → x = a' := by
+          intro x hx
+          rcases M_stable with ⟨⟨_, hm⟩, _⟩
+          apply hm x y a'
+          constructor
+          exact hx
+          rw [eq]
+          exact ha'
+        simp at h1 h2
+        rcases h1 with ⟨hc1, hc2⟩ | ⟨h1, _⟩
+        · specialize hc2 (h x₁ hc1)
+          contradiction
+        · rcases h2 with ⟨hc1, hc2⟩ | ⟨h2, _⟩
+          · specialize hc2 (h x₂ hc1)
+            contradiction
+          rw [h1, h2]
+        have h3 : (x₁, y) ∈ M := by
+          simp at h1
+          rcases h1 with ⟨hc1, _⟩ | ⟨_, _⟩
+          · exact hc1
+          contradiction
+        have h4 : (x₂, y) ∈ M := by
+          simp at h2
+          rcases h2 with ⟨hc1, _⟩ | ⟨_, _⟩
+          · exact hc1
+          contradiction
+        rcases M_stable with ⟨⟨_, right⟩, _⟩
+        apply right x₁ y x₂
+        exact ⟨h3, h4⟩
+    rcases M_stable with ⟨M_matching, M_stable⟩
+    intro x y h
+    rcases h with ⟨h1, x', y', h2, h3, hp1, hp2⟩
+    simp_all
+    rcases h1 with ⟨h11, h12⟩
+    have : (x, y) ∈ M ∨ (x, y) ∉ M := by exact Decidable.em ((x, y) ∈ M)
+    rcases this with h' | h'
+    simp_all
+    contrapose! M_matching
+    simp [isMatching]
+    intro ha
+    contrapose! ha
+    have : b ≠ y' := by
+      contrapose! pb_linear
+      exfalso
+      rw [pb_linear] at hp1
+      linarith
+    use a', b, y'
+    constructor
+    assumption
+    constructor
+    exact h2.left
+    exact this
+    contrapose! M_stable
+    use x, y
+    constructor
+    exact h'
+    rcases h2 with ⟨h2, _⟩ | h2
+    rcases h3 with ⟨h3, _⟩ | h3
+    · use x', y'
+    simp_all [h3.left, h3.right]
+    use a', y'
+    constructor
+    exact h2
+    constructor
+    assumption
+    constructor
+    assumption
+    linarith
+    simp_all [h2.left, h2.right]
+    have : ∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a b ∧ pb b' a > pb b' a' := by
+      use x', y
+    have h : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
+      exact fun a => choose_next_is_argmax pa pb pa_linear pb_linear M M_partial a
+    specialize h a
+    contradiction
   · have h1 : V pb (M \ {(a', b)} ∪ {(a, b)}) =
              V pb (M \ {(a', b)}) + V pb {(a, b)} := by
       apply sum_union
@@ -239,23 +439,8 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
     have : V pb {(a', b)} = pb b a' := by
       apply sum_singleton
     rw [this]
-    have : (pb b a > pb b a') := by
-      have : b ∈ Finset.univ \ (B') ∨
-          b ∈ {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'} := by
-          exact choose_next_spec pa pb M M_partial
-      rcases this with left | right
-      · simp at left
-        contradiction
-      · simp at right
-        rcases right with ⟨x, ⟨h1, h2⟩⟩
-        have : x = a' := by
-          rcases M_stable with ⟨⟨_, right⟩, _⟩
-          apply right x b a'
-          exact ⟨h1, ha'⟩
-        rw [this] at h2
-        linarith
-    simp [*]
-    have : pb b a - pb b a' > 0 := by aesop
+    simp
+    have : pb b a - pb b a' > 0 := by linarith
     have h : V pb M < V pb M + (pb b a - pb b a') := by
       exact Int.lt_add_of_pos_right (V pb M) this
     have : V pb M - pb b a' + pb b a = V pb M + (pb b a - pb b a') := by
@@ -265,66 +450,95 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
   use M ∪ {(a, b)}
   constructor
   · constructor
-    · intro x y₁ y₂ ⟨h1, h2⟩
-      have ha : x = a ∨ x ≠ a := by
-        exact eq_or_ne x a
-      rcases ha with eq | ne
-      have hm : ∀ y, (x, y) ∉ M := by
-        rw [eq]
-        rw [A'_def] at ha
-        simpa using ha
-      simp at h1
-      simp at h2
-      rcases h1 with _ | ⟨_, h1⟩
-      · specialize hm y₁
-        contradiction
-      · rcases h2 with _ | ⟨_, h2⟩
-        · specialize hm y₂
+    · constructor
+      · intro x y₁ y₂ ⟨h1, h2⟩
+        have ha : x = a ∨ x ≠ a := by
+          exact eq_or_ne x a
+        rcases ha with eq | ne
+        have hm : ∀ y, (x, y) ∉ M := by
+          rw [eq]
+          rw [A'_def] at ha
+          simpa using ha
+        simp at h1 h2
+        rcases h1 with _ | ⟨_, h1⟩
+        · specialize hm y₁
           contradiction
-        rw [h1, h2]
-      have h3 : (x, y₁) ∈ M := by
-        simp at h1
-        rcases h1 with left | ⟨right, _⟩
-        · exact left
-        contradiction
-      have h4 : (x, y₂) ∈ M := by
-        simp at h2
-        rcases h2 with left | ⟨right, _⟩
-        · exact left
-        contradiction
-      rcases M_stable with ⟨⟨left, _⟩, _⟩
-      apply left x y₁ y₂
-      exact ⟨h3, h4⟩
-    · intro x₁ y x₂ ⟨h1, h2⟩
-      have hb : y = b ∨ y ≠ b := by
-        exact eq_or_ne y b
-      rcases hb with eq | ne
-      have hm : ∀ x, (x, y) ∉ M := by
-        rw [eq]
-        rw [B'_def] at unmatched
-        simpa using unmatched
-      simp at h1
-      simp at h2
-      rcases h1 with _ | ⟨h1, _⟩
-      · specialize hm x₁
-        contradiction
-      · rcases h2 with _ | ⟨h2, _⟩
-        · specialize hm x₂
+        · rcases h2 with _ | ⟨_, h2⟩
+          · specialize hm y₂
+            contradiction
+          rw [h1, h2]
+        have h3 : (x, y₁) ∈ M := by
+          simp at h1
+          rcases h1 with left | ⟨right, _⟩
+          · exact left
           contradiction
-        rw [h1, h2]
-      have h3 : (x₁, y) ∈ M := by
-        simp at h1
-        rcases h1 with left | ⟨_, _⟩
-        · exact left
-        contradiction
-      have h4 : (x₂, y) ∈ M := by
-        simp at h2
-        rcases h2 with left | ⟨_, _⟩
-        · exact left
-        contradiction
-      rcases M_stable with ⟨⟨_, right⟩, _⟩
-      apply right x₁ y x₂
-      exact ⟨h3, h4⟩
+        have h4 : (x, y₂) ∈ M := by
+          simp at h2
+          rcases h2 with left | ⟨right, _⟩
+          · exact left
+          contradiction
+        rcases M_stable with ⟨⟨left, _⟩, _⟩
+        apply left x y₁ y₂
+        exact ⟨h3, h4⟩
+      · intro x₁ y x₂ ⟨h1, h2⟩
+        have hb : y = b ∨ y ≠ b := by
+          exact eq_or_ne y b
+        rcases hb with eq | ne
+        have hm : ∀ x, (x, y) ∉ M := by
+          rw [eq]
+          rw [B'_def] at unmatched
+          simpa using unmatched
+        simp at h1 h2
+        rcases h1 with _ | ⟨h1, _⟩
+        · specialize hm x₁
+          contradiction
+        · rcases h2 with _ | ⟨h2, _⟩
+          · specialize hm x₂
+            contradiction
+          rw [h1, h2]
+        have h3 : (x₁, y) ∈ M := by
+          simp at h1
+          rcases h1 with left | ⟨_, _⟩
+          · exact left
+          contradiction
+        have h4 : (x₂, y) ∈ M := by
+          simp at h2
+          rcases h2 with left | ⟨_, _⟩
+          · exact left
+          contradiction
+        rcases M_stable with ⟨⟨_, right⟩, _⟩
+        apply right x₁ y x₂
+        exact ⟨h3, h4⟩
+    rcases M_stable with ⟨M_matching, M_stable⟩
+    intro x y h
+    rcases h with ⟨h1, x', y', h2, h3, hp1, hp2⟩
+    simp at hp1 hp2 h1 h2 h3
+    rcases h2 with h2 | ⟨h21, h22⟩
+    · rcases h3 with h3 | ⟨h31, h32⟩
+      · contrapose! M_stable
+        use x, y
+        constructor
+        exact h1.left
+        use x', y'
+      · rw [h32] at hp1
+        rw [h31] at hp2
+        have h : pa x y' > pa x b := by
+          apply all_unmatched_are_worse pa pb pa_linear pb_linear M M_partial ⟨M_matching, M_stable⟩ matched_implies_chosen x y' b
+          constructor
+          exact h2
+          simp
+          exact unmatched
+        linarith
+    · simp [h21, h22] at hp1 hp2 h1 h3
+      rcases h3 with h3 | ⟨h31, h32⟩
+
+      have : ∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a b ∧ pb b' a > pb b' a' := by
+        use x', y
+      have h : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
+          exact fun a => choose_next_is_argmax pa pb pa_linear pb_linear M M_partial a
+      specialize h a
+      contradiction
+      simp [h31, h32] at hp1 hp2 h1
   · have h1 : V pb (M ∪ {(a, b)}) =
              V pb M + V pb {(a, b)} := by
       apply sum_union
@@ -340,17 +554,5 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isMatching M' ∧ V pb M' > V pb M :
     rw [this]
     specialize pb_pos b a
     assumption
-
--- Theorem 2: a stable matching with a variant score ≥ (___) implies totality
--- this works with variant based on B because if A is proposing then the resulting
--- SM is B-pessimal
-
--- and, the variant score of a B-pessimal total SM is a lower bound on the
--- variant score of any total SM
-theorem SM2 (X : Finset (α × β)) : ∃ (v : ℕ), V pb X ≥ v → #X = #A := by
-  sorry
-
--- Theorem 3: can apply theorem 1 inductively to prove that for every instance
--- of the SMP there exists a total stable matching ..
 
 end
