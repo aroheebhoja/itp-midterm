@@ -57,11 +57,23 @@ def isMatching (X : Finset (α × β)) :=
   (∀ a, ∀ b₁, ∀ b₂, (a, b₁) ∈ X ∧ (a, b₂) ∈ X → b₁ = b₂) ∧
   (∀ a₁, ∀ b, ∀ a₂, (a₁, b) ∈ X ∧ (a₂, b) ∈ X → a₁ = a₂)
 
+instance : DecidablePred (isMatching (α := α) (β := β)) := by
+  unfold isMatching
+  infer_instance
+
 def IsUnstablePair x y (X : Finset (α × β)) :=
   (x, y) ∉ X ∧ ∃ a' b', (x, b') ∈ X ∧ (a', y) ∈ X ∧ pa x y > pa x b' ∧ pb y x > pb y a'
 
+instance (x : α) {y : β} {X : Finset (α × β )} : Decidable (IsUnstablePair pa pb x y X) := by
+  unfold IsUnstablePair
+  infer_instance
+
 def isStableMatching (X : Finset (α × β)) := isMatching X ∧
   ∀ a b, ¬IsUnstablePair pa pb a b X
+
+instance : DecidablePred (isStableMatching pa pb) := by
+  unfold isStableMatching
+  infer_instance
 
 include pa_linear pb_linear
 -- Variant score
@@ -555,4 +567,15 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     specialize pb_pos b a
     assumption
 
+-- open Classical
+theorem SM2 : ∃ M', isStableMatching pa pb M' ∧ #M' = #A := by
+  -- set of all stable matchings over A and B
+  let S : Finset (Finset (α × β)) := {X : Finset (α × β) | isStableMatching pa pb X}
+  -- argue that the empty matching is trivially in S
+  have h1 : S.Nonempty := by sorry
+  let X := argmax (V pb) S
+  -- Contradiction proof: otherwise we'd have a matching with a higher variant score
+  have h2 : #X = #A := by sorry
+  use X
+  sorry
 end
