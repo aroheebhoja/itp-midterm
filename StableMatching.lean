@@ -3,6 +3,7 @@ import Mathlib.Order.Monotone.Basic
 import Mathlib.Algebra.Order.Ring.Basic
 import Mathlib.Tactic
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 namespace Finset
 
@@ -88,6 +89,46 @@ variable
 def A' : Finset α := Finset.image (Prod.fst) M
 def B' : Finset β := Finset.image (Prod.snd) M
 
+variable (X : Finset (α × β))
+
+include M_stable
+
+theorem A'_unique : ∀ a, a ∈ (A' M) → ∃! b, (a, b) ∈ M := by
+  rcases M_stable with ⟨⟨h1 , h2⟩, _⟩
+  intro a ha
+  simp [A'] at ha
+  rcases ha with ⟨x, hx⟩
+  use x
+  aesop
+
+theorem A'_exists : ∀ a, a ∈ (A' M) → ∃ b, (a, b) ∈ M := by
+  rcases M_stable with ⟨⟨h1 , h2⟩, _⟩
+  intro a ha
+  simp [A'] at ha
+  rcases ha with ⟨x, hx⟩
+  use x
+
+noncomputable def find_pair (a : α) (h : a ∈ (A' M)) :=
+  have : ∀ a, a ∈ (A' M) → ∃ b, (a, b) ∈ M := by
+    exact fun a b ↦ A'_exists pa pb pa_linear pb_linear M M_stable a b
+  (a, Classical.choose (this a h))
+
+theorem find_pair_spec a (h : a ∈ (A' M)) : find_pair pa pb pa_linear pb_linear M M_stable a h ∈ M := by sorry
+
+theorem A'_card : #(A' M) = #M := by
+  apply card_bij (find_pair pa pb pa_linear pb_linear M M_stable)
+  intro a ha
+  simp [find_pair]
+  sorry
+  have : ∀ a, a ∈ (A' M) → ∃! b, (a, b) ∈ M := by sorry
+  intro b hb c hc d
+  let (b', x) := (find_pair pa pb pa_linear pb_linear M M_stable) b hb
+  let (c', y) := (find_pair pa pb pa_linear pb_linear M M_stable) c hc
+  have : b = b' := by sorry
+  rcases M_stable with ⟨⟨h1 , h2⟩, _⟩
+  sorry
+  sorry
+
 noncomputable def choose_next (a : α) : β :=
   let unmatched : Finset β := Finset.univ \ (B' M)
   let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
@@ -95,7 +136,11 @@ noncomputable def choose_next (a : α) : β :=
   choices.argmax (pa a)
 
 variable
-  (matched_implies_chosen: ∀ a b, (a, b) ∈ M → b = choose_next pa pb (M \ {(a, b)}) a)
+  (matched_implies_chosen : ∀ (X : Finset (α × β)), isStableMatching pa pb X → ∀ a b, (a, b) ∈ X → b = choose_next pa pb (X \ {(a, b)}) a)
+
+include matched_implies_chosen
+theorem M_matched_implies_chosen : ∀ a b, (a, b) ∈ M → b = choose_next pa pb (M \ {(a, b)}) a := by
+  exact matched_implies_chosen M M_stable
 
 include M_partial
 theorem exists_unmatched_b : ∃ b, b ∉ (B' M) := by
@@ -119,7 +164,7 @@ theorem choose_next_spec : choose_next pa pb M a ∈ Finset.univ \ (B' M) ∨
   let preferred : Finset β := {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'}
   let choices := (unmatched ∪ preferred)
   have ⟨x, hx⟩ : ∃ b, b ∉ (B' M) := by
-    exact exists_unmatched_b pa pb pa_linear pb_linear M M_partial
+    exact exists_unmatched_b pa pb pa_linear pb_linear M M_partial M_stable matched_implies_chosen
   have nonempty : choices.Nonempty := by
     apply Nonempty.inl
     apply nonempty_iff_ne_empty.mpr
@@ -171,7 +216,7 @@ theorem choose_next_is_argmax' : ∀ a, ¬∃ b, b ∈ (Finset.univ \ (B' M)) �
 include matched_implies_chosen M_stable
 theorem all_unmatched_are_worse : ∀ a b b', (a, b) ∈ M ∧ b' ∈ (Finset.univ \ (B' M)) → pa a b > pa a b' := by
   rintro a b b' ⟨h1, h2⟩
-  have hb : b = choose_next pa pb (M \ {(a, b)}) a := by exact matched_implies_chosen a b h1
+  have hb : b = choose_next pa pb (M \ {(a, b)}) a := by exact matched_implies_chosen M M_stable a b h1
   simp [choose_next] at hb
   let unmatched : Finset β := Finset.univ \ (B' (M \ {(a, b)}))
   let preferred : Finset β := {b | ∃ a', (a', b) ∈ (M \ {(a, b)}) ∧ pb b a > pb b a'}
@@ -207,7 +252,7 @@ theorem all_unmatched_are_worse : ∀ a b b', (a, b) ∈ M ∧ b' ∈ (Finset.un
       exact hw3
   let choices := unmatched ∪ preferred
   have ⟨x, hx⟩ : ∃ b, b ∉ (B' M) := by
-    exact exists_unmatched_b pa pb pa_linear pb_linear M M_partial
+    exact exists_unmatched_b pa pb pa_linear pb_linear M M_partial M_stable matched_implies_chosen
   have h3 : B' (M \ {(a, b)}) ⊆ B' M := by
     simp [B']
     apply image_subset_image
@@ -299,6 +344,8 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     exact Decidable.em (b ∈ B')
   have A'_def : A' = Finset.image (Prod.fst) M := by rfl
   have B'_def : B' = Finset.image (Prod.snd) M := by rfl
+  have chooseNextDef : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
+    exact fun a => choose_next_is_argmax pa pb pa_linear pb_linear M M_partial M_stable matched_implies_chosen a
   rcases h1 with matched | unmatched
   have ⟨a', ha'⟩ : ∃ a', (a', b) ∈ M := by
     rw [B'_def] at matched
@@ -306,7 +353,8 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
   have hpref : (pb b a > pb b a') := by
       have : b ∈ Finset.univ \ (B') ∨
           b ∈ {b | ∃ a', (a', b) ∈ M ∧ pb b a > pb b a'} := by
-          exact choose_next_spec pa pb pa_linear pb_linear M M_partial
+          exact
+            choose_next_spec pa pb pa_linear pb_linear M M_partial M_stable matched_implies_chosen
       rcases this with left | right
       · simp at left
         contradiction
@@ -387,6 +435,7 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     rcases M_stable with ⟨M_matching, M_stable⟩
     intro x y h
     rcases h with ⟨h1, x', y', h2, h3, hp1, hp2⟩
+    simp at h1 h2 h3 hp1 hp2
     simp_all
     rcases h1 with ⟨h11, h12⟩
     have : (x, y) ∈ M ∨ (x, y) ∉ M := by exact Decidable.em ((x, y) ∈ M)
@@ -424,11 +473,11 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     assumption
     linarith
     simp_all [h2.left, h2.right]
-    have : ∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a b ∧ pb b' a > pb b' a' := by
+    have c1 : ∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a b ∧ pb b' a > pb b' a' := by
       use x', y
-    have h : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
-      exact fun a => choose_next_is_argmax pa pb pa_linear pb_linear M M_partial a
-    specialize h a
+    have c2 : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
+      aesop
+    specialize c2 a
     contradiction
   · have h1 : V pb (M \ {(a', b)} ∪ {(a, b)}) =
              V pb (M \ {(a', b)}) + V pb {(a, b)} := by
@@ -547,7 +596,7 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
       have : ∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a b ∧ pb b' a > pb b' a' := by
         use x', y
       have h : ∀ a, ¬∃ a' b', (a', b') ∈ M ∧ pa a b' > pa a (choose_next pa pb M a) ∧ pb b' a > pb b' a' := by
-          exact fun a => choose_next_is_argmax pa pb pa_linear pb_linear M M_partial a
+        exact fun a ↦ chooseNextDef a
       specialize h a
       contradiction
       simp [h31, h32] at hp1 hp2 h1
@@ -567,15 +616,36 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     specialize pb_pos b a
     assumption
 
--- open Classical
-theorem SM2 : ∃ M', isStableMatching pa pb M' ∧ #M' = #A := by
+include A_B_same_size
+theorem SM2 : ∃ M', isStableMatching pa pb M' ∧ #M' = Fintype.card α := by
   -- set of all stable matchings over A and B
   let S : Finset (Finset (α × β)) := {X : Finset (α × β) | isStableMatching pa pb X}
+  have h1 : ∀ s ∈ S, isStableMatching pa pb s := by aesop
   -- argue that the empty matching is trivially in S
-  have h1 : S.Nonempty := by sorry
+  have h2 : S.Nonempty := by
+    have : ∅ ∈ S := by
+      simp [S]
+      constructor; constructor
+      simp; simp
+      simp [IsUnstablePair]
+    apply nonempty_iff_ne_empty.mpr
+    exact ne_empty_of_mem this
   let X := argmax (V pb) S
+  rcases argmax_spec S (V pb) h2 with ⟨h3, h4⟩
+  specialize h1 X h3
   -- Contradiction proof: otherwise we'd have a matching with a higher variant score
-  have h2 : #X = #A := by sorry
+  have h8 : #X ≤ Fintype.card α := by
+    have ha : #(A' X) = #X := by exact A'_card pa pb pa_linear pb_linear X h1
+    have hb : #(A' X) ≤ Fintype.card α := by exact card_le_univ X.A'
+    linarith
+  have h9 : #X = Fintype.card α := by
+    contrapose! h4
+    have h10 : #X < Fintype.card α := by exact Nat.lt_of_le_of_ne h8 h4
+    have h11 : #X < Fintype.card β := by linarith
+    have ⟨M', h5, h6⟩ : ∃ M', isStableMatching pa pb M' ∧ V pb M' > V pb X := by
+      apply SM1 pa pb pb_pos pa_linear pb_linear X ⟨h10, h11⟩ h1 matched_implies_chosen
+    use M'
+    constructor
+    simp [S]; exact h5; exact h6
   use X
-  sorry
 end
