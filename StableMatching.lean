@@ -3,7 +3,6 @@ import Mathlib.Order.Monotone.Basic
 import Mathlib.Algebra.Order.Ring.Basic
 import Mathlib.Tactic
 set_option linter.unusedSectionVars false
-set_option linter.unusedVariables false
 
 namespace Finset
 variable {α : Type*} [Inhabited α]
@@ -413,8 +412,7 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     constructor
     exact h2.left
     exact this
-    contrapose! M_stable
-    use x, y
+    apply M_stable x y
     constructor
     exact h'
     rcases h2 with ⟨h2, _⟩ | h2
@@ -533,8 +531,7 @@ theorem SM1 : ∃ (M' : Finset (α × β)), isStableMatching pa pb M' ∧ V pb M
     simp at hp1 hp2 h1 h2 h3
     rcases h2 with h2 | ⟨h21, h22⟩
     · rcases h3 with h3 | ⟨h31, h32⟩
-      · contrapose! M_stable
-        use x, y
+      · apply M_stable x y
         constructor
         exact h1.left
         use x', y'
